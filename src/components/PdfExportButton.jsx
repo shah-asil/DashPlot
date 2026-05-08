@@ -18,7 +18,7 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
 
       // Wait for CSS layout changes (grid collapse, control hiding) and
       // Recharts ResizeObserver to re-render charts at new widths.
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise(r => setTimeout(r, 2000))
 
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,

@@ -9,6 +9,7 @@ import MetricSummary from '../components/MetricSummary'
 import AIInsightCard from '../components/AIInsightCard'
 import ShareButton from '../components/ShareButton'
 import PdfExportButton from '../components/PdfExportButton'
+import PdfSummaryStats from '../components/PdfSummaryStats'
 
 // ─── Chart config helpers ─────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ export default function ReportView() {
           </div>
 
           <AIInsightCard />
+          <PdfSummaryStats report={report} />
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   ResponsiveContainer,
   BarChart, Bar,
@@ -10,12 +11,29 @@ import {
 } from 'recharts'
 
 export const CHART_COLORS = ['#1D9E75', '#9FE1CB', '#185FA5', '#EF9F27']
-const MAX_ROWS = 500
+const MAX_ROWS       = 500
 const MAX_PIE_SLICES = 12
+const LABEL_MAX_PTS  = 20
+
+// ─── PDF mode detection ───────────────────────────────────────────────────────
+
+function usePdfMode() {
+  const [on, setOn] = useState(() => document.body.classList.contains('pdf-export-mode'))
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setOn(document.body.classList.contains('pdf-export-mode'))
+    )
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return on
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export default function DashboardChart({ chartType = 'bar', report, colConfig: colConfigProp, height = 300 }) {
+  const pdfMode = usePdfMode()
+
   const rows = report?.raw_data
   const colConfig = colConfigProp
     ? { xAxis: colConfigProp.xAxis, yAxis: colConfigProp.yAxis, series: colConfigProp.series }
@@ -25,24 +43,20 @@ export default function DashboardChart({ chartType = 'bar', report, colConfig: c
     return <EmptyChart message="No data configured." height={height} />
   }
 
-  const { data, keys } = prepareData(
-    rows.slice(0, MAX_ROWS),
-    colConfig,
-    chartType,
-  )
+  const { data, keys } = prepareData(rows.slice(0, MAX_ROWS), colConfig, chartType)
 
   if (!data.length) {
     return <EmptyChart message="No plottable data found for this chart type." height={height} />
   }
 
-  const shared = { data, keys, xAxis: colConfig.xAxis, height }
+  const shared = { data, keys, xAxis: colConfig.xAxis, height, pdfMode }
 
   switch (chartType) {
     case 'line':    return <ChartLine    {...shared} />
     case 'area':    return <ChartArea    {...shared} />
-    case 'pie':     return <ChartPie     data={data} height={height} />
-    case 'scatter': return <ChartScatter data={data} xLabel={colConfig.xAxis} yLabel={colConfig.yAxis[0]} height={height} />
-    case 'funnel':  return <ChartFunnel  data={data} height={height} />
+    case 'pie':     return <ChartPie     data={data} height={height} pdfMode={pdfMode} />
+    case 'scatter': return <ChartScatter data={data} xLabel={colConfig.xAxis} yLabel={colConfig.yAxis[0]} height={height} pdfMode={pdfMode} />
+    case 'funnel':  return <ChartFunnel  data={data} height={height} pdfMode={pdfMode} />
     default:        return <ChartBar     {...shared} />
   }
 }
@@ -77,7 +91,6 @@ function prepareData(rows, colConfig, chartType) {
     return { data, keys: [] }
   }
 
-  // bar / line / area — with optional series pivot
   if (series) {
     const seriesValues = [...new Set(rows.map(r => String(r[series] ?? '')))].filter(Boolean).slice(0, 8)
     const grouped = new Map()
@@ -133,23 +146,29 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-const AXIS_TICK  = { fontSize: 11, fill: '#B4B2A9' }
-const GRID_STYLE = { stroke: '#E1F5EE', strokeDasharray: '3 3' }
+const AXIS_TICK    = { fontSize: 11, fill: '#B4B2A9' }
+const GRID_STYLE   = { stroke: '#E1F5EE', strokeDasharray: '3 3' }
 const LEGEND_STYLE = { fontSize: 11, color: '#B4B2A9' }
+const LABEL_STYLE  = { fontSize: 9, fill: '#185FA5', fontWeight: 500 }
 
 // ─── Bar chart ────────────────────────────────────────────────────────────────
 
-function ChartBar({ data, keys, xAxis, height }) {
+function ChartBar({ data, keys, xAxis, height, pdfMode }) {
+  const showLabels = pdfMode && data.length <= LABEL_MAX_PTS
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+      <BarChart data={data} margin={{ top: showLabels ? 22 : 4, right: 8, bottom: 4, left: 0 }}>
         <CartesianGrid {...GRID_STYLE} vertical={false} />
         <XAxis dataKey={xAxis} tick={AXIS_TICK} tickFormatter={fmtXTick} tickLine={false} axisLine={false} interval="preserveStartEnd" />
         <YAxis tick={AXIS_TICK} tickFormatter={fmtNum} tickLine={false} axisLine={false} width={48} />
         <Tooltip content={<CustomTooltip />} />
         {keys.length > 1 && <Legend wrapperStyle={LEGEND_STYLE} />}
         {keys.map((k, i) => (
-          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 4]} radius={[3, 3, 0, 0]} maxBarSize={48} />
+          <Bar key={k} dataKey={k} fill={CHART_COLORS[i % 4]} radius={[3, 3, 0, 0]} maxBarSize={48} isAnimationActive={!pdfMode}>
+            {showLabels && (
+              <LabelList dataKey={k} position="top" style={LABEL_STYLE} formatter={fmtNum} />
+            )}
+          </Bar>
         ))}
       </BarChart>
     </ResponsiveContainer>
@@ -158,17 +177,31 @@ function ChartBar({ data, keys, xAxis, height }) {
 
 // ─── Line chart ───────────────────────────────────────────────────────────────
 
-function ChartLine({ data, keys, xAxis, height }) {
+function ChartLine({ data, keys, xAxis, height, pdfMode }) {
+  const showLabels = pdfMode && data.length <= LABEL_MAX_PTS
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+      <LineChart data={data} margin={{ top: showLabels ? 22 : 4, right: 8, bottom: 4, left: 0 }}>
         <CartesianGrid {...GRID_STYLE} />
         <XAxis dataKey={xAxis} tick={AXIS_TICK} tickFormatter={fmtXTick} tickLine={false} axisLine={false} interval="preserveStartEnd" />
         <YAxis tick={AXIS_TICK} tickFormatter={fmtNum} tickLine={false} axisLine={false} width={48} />
         <Tooltip content={<CustomTooltip />} />
         {keys.length > 1 && <Legend wrapperStyle={LEGEND_STYLE} />}
         {keys.map((k, i) => (
-          <Line key={k} type="monotone" dataKey={k} stroke={CHART_COLORS[i % 4]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+          <Line
+            key={k}
+            type="monotone"
+            dataKey={k}
+            stroke={CHART_COLORS[i % 4]}
+            strokeWidth={2}
+            dot={pdfMode ? { r: 3, fill: CHART_COLORS[i % 4], strokeWidth: 0 } : false}
+            activeDot={{ r: 4 }}
+            isAnimationActive={!pdfMode}
+          >
+            {showLabels && (
+              <LabelList dataKey={k} position="top" style={{ ...LABEL_STYLE, fill: CHART_COLORS[i % 4] }} formatter={fmtNum} />
+            )}
+          </Line>
         ))}
       </LineChart>
     </ResponsiveContainer>
@@ -177,10 +210,11 @@ function ChartLine({ data, keys, xAxis, height }) {
 
 // ─── Area chart ───────────────────────────────────────────────────────────────
 
-function ChartArea({ data, keys, xAxis, height }) {
+function ChartArea({ data, keys, xAxis, height, pdfMode }) {
+  const showLabels = pdfMode && data.length <= LABEL_MAX_PTS
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+      <AreaChart data={data} margin={{ top: showLabels ? 22 : 4, right: 8, bottom: 4, left: 0 }}>
         <defs>
           {keys.map((k, i) => (
             <linearGradient key={k} id={`areaGrad${i}`} x1="0" y1="0" x2="0" y2="1">
@@ -195,7 +229,20 @@ function ChartArea({ data, keys, xAxis, height }) {
         <Tooltip content={<CustomTooltip />} />
         {keys.length > 1 && <Legend wrapperStyle={LEGEND_STYLE} />}
         {keys.map((k, i) => (
-          <Area key={k} type="monotone" dataKey={k} stroke={CHART_COLORS[i % 4]} strokeWidth={2} fill={`url(#areaGrad${i})`} dot={false} />
+          <Area
+            key={k}
+            type="monotone"
+            dataKey={k}
+            stroke={CHART_COLORS[i % 4]}
+            strokeWidth={2}
+            fill={`url(#areaGrad${i})`}
+            dot={pdfMode ? { r: 3, fill: CHART_COLORS[i % 4], strokeWidth: 0 } : false}
+            isAnimationActive={!pdfMode}
+          >
+            {showLabels && (
+              <LabelList dataKey={k} position="top" style={{ ...LABEL_STYLE, fill: CHART_COLORS[i % 4] }} formatter={fmtNum} />
+            )}
+          </Area>
         ))}
       </AreaChart>
     </ResponsiveContainer>
@@ -204,7 +251,7 @@ function ChartArea({ data, keys, xAxis, height }) {
 
 // ─── Pie chart ────────────────────────────────────────────────────────────────
 
-function ChartPie({ data, height }) {
+function ChartPie({ data, height, pdfMode }) {
   const outerRadius = height < 250 ? 70 : 110
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -217,13 +264,16 @@ function ChartPie({ data, height }) {
           cy="50%"
           outerRadius={outerRadius}
           paddingAngle={2}
+          isAnimationActive={!pdfMode}
+          label={pdfMode ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
+          labelLine={pdfMode}
         >
           {data.map((_, i) => (
             <Cell key={i} fill={CHART_COLORS[i % 4]} stroke="white" strokeWidth={2} />
           ))}
         </Pie>
         <Tooltip content={<CustomTooltip />} />
-        <Legend wrapperStyle={LEGEND_STYLE} />
+        {!pdfMode && <Legend wrapperStyle={LEGEND_STYLE} />}
       </PieChart>
     </ResponsiveContainer>
   )
@@ -231,7 +281,7 @@ function ChartPie({ data, height }) {
 
 // ─── Scatter chart ────────────────────────────────────────────────────────────
 
-function ChartScatter({ data, xLabel, yLabel, height }) {
+function ChartScatter({ data, xLabel, yLabel, height, pdfMode }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
@@ -239,7 +289,7 @@ function ChartScatter({ data, xLabel, yLabel, height }) {
         <XAxis dataKey="x" name={xLabel} tick={AXIS_TICK} tickFormatter={fmtNum} tickLine={false} axisLine={false} type="number" />
         <YAxis dataKey="y" name={yLabel} tick={AXIS_TICK} tickFormatter={fmtNum} tickLine={false} axisLine={false} width={48} type="number" />
         <Tooltip cursor={{ strokeDasharray: '3 3', stroke: '#E1F5EE' }} content={<CustomTooltip />} />
-        <Scatter data={data} fill={CHART_COLORS[0]} opacity={0.7} />
+        <Scatter data={data} fill={CHART_COLORS[0]} opacity={0.7} isAnimationActive={!pdfMode} />
       </ScatterChart>
     </ResponsiveContainer>
   )
@@ -247,12 +297,12 @@ function ChartScatter({ data, xLabel, yLabel, height }) {
 
 // ─── Funnel chart ─────────────────────────────────────────────────────────────
 
-function ChartFunnel({ data, height }) {
+function ChartFunnel({ data, height, pdfMode }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <FunnelChart>
         <Tooltip content={<CustomTooltip />} />
-        <Funnel dataKey="value" data={data} isAnimationActive>
+        <Funnel dataKey="value" data={data} isAnimationActive={!pdfMode}>
           {data.map((_, i) => (
             <Cell key={i} fill={CHART_COLORS[i % 4]} />
           ))}

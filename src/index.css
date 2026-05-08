@@ -31,3 +31,15 @@
   grid-template-columns: 1fr !important;
   gap: 20px !important;
 }
+
+/* Kill all CSS animations/transitions during capture */
+.pdf-export-mode * {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Show the summary stats section only during PDF capture */
+.pdf-export-mode .pdf-stats-show {
+  display: flex !important;
+}
