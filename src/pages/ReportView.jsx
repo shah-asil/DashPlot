@@ -7,6 +7,8 @@ import DashboardChart from '../components/DashboardChart'
 import ChartTypeSelector from '../components/ChartTypeSelector'
 import MetricSummary from '../components/MetricSummary'
 import AIInsightCard from '../components/AIInsightCard'
+import ShareButton from '../components/ShareButton'
+import PdfExportButton from '../components/PdfExportButton'
 
 // ─── Chart config helpers ─────────────────────────────────────────────────────
 
@@ -44,9 +46,11 @@ export default function ReportView() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const [report, setReport]   = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [report,   setReport]   = useState(null)
+  const [loading,  setLoading]  = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  const pdfRef = useRef(null)
 
   const celebrateThird = location.state?.celebrateThird === true
 
@@ -92,28 +96,48 @@ export default function ReportView() {
       )}
 
       <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-        <Header report={report} onTitleSave={handleTitleSave} />
-        <MetricSummary rows={report.raw_data} colConfig={report.column_config} />
-
-        <ChartCard
+        <Header
           report={report}
-          config={chartConfigs[0]}
-          onChange={c => handleChartConfigChange(0, c)}
-          large
+          onTitleSave={handleTitleSave}
+          actions={
+            <div className="flex items-start gap-2 flex-wrap">
+              <PdfExportButton
+                contentRef={pdfRef}
+                reportTitle={report.title}
+                plan={profile?.plan}
+              />
+              <ShareButton
+                report={report}
+                profile={profile}
+                onUpdate={setReport}
+              />
+            </div>
+          }
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {chartConfigs.slice(1).map((cfg, i) => (
-            <ChartCard
-              key={i}
-              report={report}
-              config={cfg}
-              onChange={c => handleChartConfigChange(i + 1, c)}
-            />
-          ))}
-        </div>
+        <div ref={pdfRef} className="flex flex-col gap-6">
+          <MetricSummary rows={report.raw_data} colConfig={report.column_config} />
 
-        <AIInsightCard />
+          <ChartCard
+            report={report}
+            config={chartConfigs[0]}
+            onChange={c => handleChartConfigChange(0, c)}
+            large
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {chartConfigs.slice(1).map((cfg, i) => (
+              <ChartCard
+                key={i}
+                report={report}
+                config={cfg}
+                onChange={c => handleChartConfigChange(i + 1, c)}
+              />
+            ))}
+          </div>
+
+          <AIInsightCard />
+        </div>
       </div>
     </div>
   )
@@ -124,9 +148,9 @@ export default function ReportView() {
 const SELECT_CLS = 'text-xs text-navy border border-mint rounded-pill px-2.5 py-1 bg-white outline-none focus:border-teal transition-colors cursor-pointer'
 
 function ChartCard({ report, config, onChange, large = false }) {
-  const headers   = report.column_config?.headers ?? []
-  const colTypes  = report.column_config?.columnTypes ?? {}
-  const numCols   = headers.filter(h => colTypes[h] === 'number')
+  const headers     = report.column_config?.headers ?? []
+  const colTypes    = report.column_config?.columnTypes ?? {}
+  const numCols     = headers.filter(h => colTypes[h] === 'number')
   const yAxisSingle = config.yAxis?.[0] ?? ''
 
   return (
@@ -166,7 +190,7 @@ function ChartCard({ report, config, onChange, large = false }) {
 
 // ─── Header with inline title edit ───────────────────────────────────────────
 
-function Header({ report, onTitleSave }) {
+function Header({ report, onTitleSave, actions }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(report.title)
   const inputRef = useRef(null)
@@ -228,6 +252,10 @@ function Header({ report, onTitleSave }) {
           <span>Created {created}</span>
         </div>
       </div>
+
+      {actions && (
+        <div className="flex-shrink-0">{actions}</div>
+      )}
     </header>
   )
 }
@@ -239,7 +267,7 @@ function ThirdReportBanner({ onClose }) {
     <div className="w-full bg-amber-50 border-b border-amber-200 px-4 py-3">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1 text-sm text-amber-800">
-          <span className="font-medium">🎉 You've created all 3 trial reports!</span>
+          <span className="font-medium">You've created all 3 trial reports!</span>
           {' '}Upgrade to Solo for unlimited reports, all chart types, and full AI insights.
         </div>
         <div className="flex items-center gap-3">
@@ -262,7 +290,17 @@ function LoadingView() {
   return (
     <div className="flex-1 flex flex-col">
       <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-        <div className="h-8 w-48 bg-mint rounded-pill animate-pulse" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2 flex-1">
+            <div className="h-4 w-24 bg-mint rounded-pill animate-pulse" />
+            <div className="h-8 w-64 bg-mint rounded-pill animate-pulse" />
+            <div className="h-4 w-48 bg-mint rounded-pill animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-11 w-28 bg-mint rounded-pill animate-pulse" />
+            <div className="h-11 w-24 bg-mint rounded-pill animate-pulse" />
+          </div>
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-mint rounded-card animate-pulse" />)}
         </div>

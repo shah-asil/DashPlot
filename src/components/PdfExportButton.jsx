@@ -1,0 +1,100 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+
+export default function PdfExportButton({ contentRef, reportTitle, plan }) {
+  const [exporting, setExporting] = useState(false)
+
+  const canExport = plan === 'pro' || plan === 'agency'
+
+  async function handleExport() {
+    if (!contentRef?.current) return
+    setExporting(true)
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ])
+
+      await new Promise(r => setTimeout(r, 120))
+
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const margin  = 10
+      const pageW   = pdf.internal.pageSize.getWidth()
+      const pageH   = pdf.internal.pageSize.getHeight()
+      const imgW    = pageW - margin * 2
+      const imgH    = (canvas.height / canvas.width) * imgW
+      const usable  = pageH - margin * 2
+
+      let page = 0
+      while (page * usable < imgH) {
+        if (page > 0) pdf.addPage()
+        pdf.addImage(imgData, 'PNG', margin, margin - page * usable, imgW, imgH)
+        page++
+      }
+
+      const safeName = (reportTitle ?? 'report').replace(/[^a-z0-9\s-]/gi, '').trim() || 'report'
+      pdf.save(`${safeName}.pdf`)
+    } catch (err) {
+      console.error('[DashPlot] PDF export failed:', err.message)
+    }
+    setExporting(false)
+  }
+
+  if (!canExport) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          disabled
+          className="text-sm border border-mint text-subtle rounded-pill px-4 py-2 flex items-center gap-2 min-h-[44px] cursor-not-allowed opacity-60"
+        >
+          <LockIcon />
+          Export PDF
+        </button>
+        <p className="text-xs text-subtle px-1">
+          PDF requires Pro.{' '}
+          <Link to="/upgrade" className="text-teal hover:underline">
+            Upgrade →
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={exporting}
+      className="text-sm border border-teal-light rounded-pill px-4 py-2 flex items-center gap-2 min-h-[44px] hover:bg-mint transition-colors disabled:opacity-60"
+      style={{ color: '#0F6E56' }}
+    >
+      <DownloadIcon />
+      {exporting ? 'Exporting…' : 'Export PDF'}
+    </button>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 2v7M4 6.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 11h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="6" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 6V4a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}

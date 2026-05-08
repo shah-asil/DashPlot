@@ -20,6 +20,7 @@ import NotFound from './pages/NotFound'
 const DashboardNew = lazy(() => import('./pages/DashboardNew'))
 const ReportView   = lazy(() => import('./pages/ReportView'))
 const Upgrade      = lazy(() => import('./pages/Upgrade'))
+const ShareView    = lazy(() => import('./pages/ShareView'))
 
 function LazyFallback() {
   return (
@@ -29,10 +30,25 @@ function LazyFallback() {
   )
 }
 
+function ShareFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-mint border-t-teal animate-spin" />
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <Routes>
+        <Route path="/share/:token" element={
+          <Suspense fallback={<ShareFallback />}>
+            <ShareView />
+          </Suspense>
+        } />
+        <Route path="*" element={<AppShell />} />
+      </Routes>
     </AuthProvider>
   )
 }
@@ -99,8 +115,6 @@ function AppShell() {
               <PlaceholderPage title="Billing" phase={10} />
             </ProtectedRoute>
           } />
-
-          <Route path="/share/:token" element={<PlaceholderPage title="Shared Report" phase={7} />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
