@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import posthog from './lib/posthog'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -30,6 +31,13 @@ function LazyFallback() {
   )
 }
 
+function SharePageWrapper() {
+  useEffect(() => {
+    posthog.capture('page_viewed', { page_name: 'share' })
+  }, [])
+  return <ShareView />
+}
+
 function ShareFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -44,7 +52,7 @@ export default function App() {
       <Routes>
         <Route path="/share/:token" element={
           <Suspense fallback={<ShareFallback />}>
-            <ShareView />
+            <SharePageWrapper />
           </Suspense>
         } />
         <Route path="*" element={<AppShell />} />
@@ -53,9 +61,38 @@ export default function App() {
   )
 }
 
+function PageTracker() {
+  const location = useLocation()
+  useEffect(() => {
+    posthog.capture('page_viewed', { page_name: resolvePageName(location.pathname) })
+  }, [location.pathname])
+  return null
+}
+
+function resolvePageName(pathname) {
+  if (pathname === '/')                    return 'landing'
+  if (pathname === '/signup')              return 'signup'
+  if (pathname === '/login')               return 'login'
+  if (pathname === '/onboarding')          return 'onboarding'
+  if (pathname === '/dashboard')           return 'dashboard'
+  if (pathname === '/dashboard/new')       return 'dashboard_new'
+  if (pathname.startsWith('/dashboard/'))  return 'report_view'
+  if (pathname === '/upgrade')             return 'upgrade'
+  if (pathname.startsWith('/share/'))      return 'share'
+  if (pathname === '/account/billing')     return 'billing'
+  if (pathname === '/account')             return 'account'
+  if (pathname.startsWith('/ref/'))        return 'referral_landing'
+  if (pathname === '/privacy')             return 'privacy'
+  if (pathname === '/terms')               return 'terms'
+  if (pathname === '/faq')                 return 'faq'
+  if (pathname === '/guide')               return 'guide'
+  return 'unknown'
+}
+
 function AppShell() {
   return (
     <div className="min-h-screen flex flex-col">
+      <PageTracker />
       <Navbar />
       <main className="flex-1 flex flex-col">
         <Routes>

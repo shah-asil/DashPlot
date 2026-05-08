@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LogoWordmark } from '../components/Logo'
+import posthog from '../lib/posthog'
 
 export default function Signup() {
   const { signUp, signInWithGoogle } = useAuth()
@@ -32,6 +33,7 @@ export default function Signup() {
       return
     }
 
+    posthog.capture('signup_completed', { method: 'email' })
     navigate('/onboarding')
   }
 

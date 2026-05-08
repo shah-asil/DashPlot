@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { sleep } from '../lib/utils'
+import posthog from '../lib/posthog'
 
 const AuthContext = createContext(null)
 
@@ -19,6 +20,7 @@ export function AuthProvider({ children }) {
       if (data) {
         setProfile(data)
         setLoading(false)
+        posthog.identify(userId, { email: data.email, plan: data.plan })
         return data
       }
       if (i < retries - 1) await sleep(1000)
@@ -34,13 +36,22 @@ export function AuthProvider({ children }) {
       else setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
+        if (event === 'SIGNED_IN') {
+          const u = session.user
+          const isGoogle = u.app_metadata?.provider === 'google'
+          const isNew = Math.abs(new Date(u.created_at) - new Date(u.last_sign_in_at)) < 10000
+          if (isGoogle && isNew) {
+            posthog.capture('signup_completed', { method: 'google' })
+          }
+        }
       } else {
         setProfile(null)
         setLoading(false)
+        posthog.reset()
       }
     })
 

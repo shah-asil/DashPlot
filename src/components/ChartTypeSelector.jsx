@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import posthog from '../lib/posthog'
 
 const TYPES = [
   { id: 'bar',     label: 'Bar',     Icon: BarIcon,     minPlan: 'trial' },
@@ -21,6 +22,14 @@ export default function ChartTypeSelector({ current, onChange }) {
   const { profile } = useAuth()
   const plan = profile?.plan ?? 'trial'
   const [lockedBanner, setLockedBanner] = useState(false)
+  const promptSeenRef = useRef(false)
+
+  useEffect(() => {
+    if (lockedBanner && !promptSeenRef.current) {
+      posthog.capture('upgrade_prompt_seen', { gate_type: 'chart' })
+      promptSeenRef.current = true
+    }
+  }, [lockedBanner])
 
   function handleClick(type) {
     if (!planAllows(plan, type.minPlan)) {
@@ -61,7 +70,10 @@ export default function ChartTypeSelector({ current, onChange }) {
           <Link
             to="/upgrade"
             className="text-white bg-teal px-4 py-1.5 rounded-pill text-xs font-medium hover:bg-opacity-90 transition-colors whitespace-nowrap"
-            onClick={() => setLockedBanner(false)}
+            onClick={() => {
+              posthog.capture('upgrade_clicked', { gate_type: 'chart', plan_shown: 'pro' })
+              setLockedBanner(false)
+            }}
           >
             Upgrade →
           </Link>

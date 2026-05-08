@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LogoWordmark } from '../components/Logo'
+import posthog from '../lib/posthog'
 
 const QUESTIONS = [
   {
@@ -52,6 +53,10 @@ export default function Onboarding() {
       return
     }
 
+    posthog.capture('onboarding_completed', {
+      business_type: updated.business_type,
+      data_preference: updated.data_source,
+    })
     navigate('/dashboard')
   }
 

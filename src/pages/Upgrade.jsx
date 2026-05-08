@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import TrialStatusBar from '../components/TrialStatusBar'
+import posthog from '../lib/posthog'
 
 const PLANS = [
   {
@@ -63,6 +64,7 @@ export default function Upgrade() {
 
   async function handleUpgrade(plan) {
     setError('')
+    posthog.capture('upgrade_clicked', { gate_type: 'pricing_page', plan_shown: plan.id })
     setLoadingPlan(plan.id)
 
     const { data: { session } } = await supabase.auth.getSession()

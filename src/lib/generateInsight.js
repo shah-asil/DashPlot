@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase } from './supabase'
+import posthog from './posthog'
 
 const client = new Anthropic({
   apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
@@ -44,6 +45,8 @@ export async function generateReportInsight(report) {
   if (!summary) throw new Error('Claude returned an empty response')
 
   await supabase.from('reports').update({ ai_summary: summary }).eq('id', report.id)
+
+  posthog.capture('ai_insight_generated', { report_id: report.id })
 
   await supabase.from('report_history').insert({
     report_id: report.id,

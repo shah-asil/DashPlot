@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import TrialStatusBar from '../components/TrialStatusBar'
+import posthog from '../lib/posthog'
 
 const CHART_TYPE_LABELS = {
   bar: 'Bar', line: 'Line', area: 'Area',
@@ -24,7 +25,13 @@ export default function Dashboard() {
       navigate('/dashboard', { replace: true })
       if (user) {
         fetchProfile(user.id).then(p => {
-          if (p?.plan && p.plan !== 'trial') setUpgradedPlan(p.plan)
+          if (p?.plan && p.plan !== 'trial') {
+            setUpgradedPlan(p.plan)
+            posthog.capture('upgrade_completed', {
+              plan_name: p.plan,
+              billing_period: p.billing_period ?? 'monthly',
+            })
+          }
         })
       }
     }

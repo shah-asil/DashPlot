@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import posthog from '../lib/posthog'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { callWithRetry } from '../lib/utils'
@@ -49,6 +50,10 @@ export default function DashboardNew() {
     const suggested = suggestColumnConfig(result.headers, result.columnTypes)
     setColumnConfig(suggested)
     setChartConfigs(suggestChartConfigs(result.headers, result.columnTypes))
+    posthog.capture('file_uploaded', {
+      file_type: f.name.split('.').pop().toLowerCase(),
+      row_count: result.rowCount,
+    })
     setStep(1)
   }
 
@@ -111,6 +116,10 @@ export default function DashboardNew() {
     }
 
     clearInterval(timer)
+    posthog.capture('report_created', {
+      chart_types: [...new Set(chartConfigs.map(c => c.type))],
+      data_source: parsed.source,
+    })
     const isThirdReport = profile?.plan === 'trial' && trialReportsUsed + 1 === 3
     navigate(`/dashboard/${result.data.id}`, {
       state: { celebrateThird: isThirdReport },
@@ -504,6 +513,10 @@ function Field({ label, hint, children }) {
 // ─── Gate + Notice screens ────────────────────────────────────────────────────
 
 function TrialLimitGate() {
+  useEffect(() => {
+    posthog.capture('upgrade_prompt_seen', { gate_type: 'report_limit' })
+  }, [])
+
   return (
     <div className="flex flex-col flex-1">
       <TrialStatusBar />
@@ -517,6 +530,7 @@ function TrialLimitGate() {
           <p className="text-sm text-subtle">Upgrade to Solo or above for unlimited reports, more chart types, and full AI insights.</p>
           <Link
             to="/upgrade"
+            onClick={() => posthog.capture('upgrade_clicked', { gate_type: 'report_limit', plan_shown: 'solo' })}
             className="text-sm text-white bg-teal px-8 py-3 rounded-pill hover:bg-opacity-90 transition-colors font-medium min-h-[44px] flex items-center"
           >
             Unlock reporting →

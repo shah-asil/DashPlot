@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import posthog from '../lib/posthog'
 
 export default function ShareButton({ report, profile, onUpdate }) {
   const [open, setOpen]       = useState(false)
@@ -11,6 +12,7 @@ export default function ShareButton({ report, profile, onUpdate }) {
   const plan          = profile?.plan ?? 'trial'
   const canShare      = plan !== 'trial'
   const canWhiteLabel = plan === 'pro' || plan === 'agency'
+  const promptSeenRef = useRef(false)
 
   const isShared   = report.is_shared ?? false
   const shareToken = report.share_token
@@ -27,6 +29,13 @@ export default function ShareButton({ report, profile, onUpdate }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
+  useEffect(() => {
+    if (open && !canShare && !promptSeenRef.current) {
+      posthog.capture('upgrade_prompt_seen', { gate_type: 'sharing' })
+      promptSeenRef.current = true
+    }
+  }, [open, canShare])
+
   async function toggleSharing() {
     setSaving(true)
     if (isShared) {
@@ -38,7 +47,10 @@ export default function ShareButton({ report, profile, onUpdate }) {
         .from('reports')
         .update({ is_shared: true, share_token: token })
         .eq('id', report.id)
-      if (!error) onUpdate(r => ({ ...r, is_shared: true, share_token: token }))
+      if (!error) {
+        onUpdate(r => ({ ...r, is_shared: true, share_token: token }))
+        posthog.capture('report_shared', { report_id: report.id })
+      }
     }
     setSaving(false)
   }
@@ -86,7 +98,10 @@ export default function ShareButton({ report, profile, onUpdate }) {
               <p className="text-xs text-subtle">Sharing is available on Solo plan and above.</p>
               <Link
                 to="/upgrade"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  posthog.capture('upgrade_clicked', { gate_type: 'sharing', plan_shown: 'solo' })
+                  setOpen(false)
+                }}
                 className="self-start text-xs text-white bg-teal px-4 py-2 rounded-pill hover:bg-opacity-90 transition-colors font-medium min-h-[36px] flex items-center"
               >
                 Unlock sharing →

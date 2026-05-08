@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import posthog from '../lib/posthog'
 
 export default function PdfExportButton({ contentRef, reportTitle, plan }) {
   const [exporting, setExporting] = useState(false)
 
   const canExport = plan === 'pro' || plan === 'agency'
+
+  useEffect(() => {
+    if (!canExport) posthog.capture('upgrade_prompt_seen', { gate_type: 'pdf' })
+  }, [])
 
   async function handleExport() {
     if (!contentRef?.current) return
@@ -88,7 +93,11 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
         </button>
         <p className="text-xs text-subtle px-1">
           PDF requires Pro.{' '}
-          <Link to="/upgrade" className="text-teal hover:underline">
+          <Link
+            to="/upgrade"
+            onClick={() => posthog.capture('upgrade_clicked', { gate_type: 'pdf', plan_shown: 'pro' })}
+            className="text-teal hover:underline"
+          >
             Upgrade →
           </Link>
         </p>
