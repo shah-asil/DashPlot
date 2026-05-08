@@ -51,7 +51,7 @@ export default function Terms() {
       </Section>
 
       <Section title="11. Contact">
-        <p>For questions about these terms, contact <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>.</p>
+        <p>For questions about these terms, contact <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>.</p>
       </Section>
     </div>
   )

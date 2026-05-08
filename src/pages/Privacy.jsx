@@ -5,7 +5,7 @@ export default function Privacy() {
       <p className="text-sm text-subtle mb-10">Last updated: 1 May 2025</p>
 
       <Section title="1. Who we are">
-        <p>DashPlot is operated by its founders and is governed by the laws of the Republic of Mauritius. References to "we", "us", or "our" mean DashPlot. Our contact email is <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>.</p>
+        <p>DashPlot is operated by its founders and is governed by the laws of the Republic of Mauritius. References to "we", "us", or "our" mean DashPlot. Our contact email is <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>.</p>
       </Section>
 
       <Section title="2. Data we collect">
@@ -38,7 +38,7 @@ export default function Privacy() {
       </Section>
 
       <Section title="5. Data retention">
-        <p>We retain your data for as long as your account is active. If your free trial expires and you do not upgrade, your account becomes read-only for 23 days, after which all data is permanently deleted (37 days from trial expiry). You may request earlier deletion by emailing <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>.</p>
+        <p>We retain your data for as long as your account is active. If your free trial expires and you do not upgrade, your account becomes read-only for 23 days, after which all data is permanently deleted (37 days from trial expiry). You may request earlier deletion by emailing <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>.</p>
       </Section>
 
       <Section title="6. Third-party processors">
@@ -72,11 +72,11 @@ export default function Privacy() {
       </Section>
 
       <Section title="8. Your rights">
-        <p>You have the right to access, correct, or delete your personal data. To exercise these rights, email <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>. We will respond within 30 days. This policy is compliant with the Mauritius Data Protection Act 2017 and GDPR.</p>
+        <p>You have the right to access, correct, or delete your personal data. To exercise these rights, email <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>. We will respond within 30 days. This policy is compliant with the Mauritius Data Protection Act 2017 and GDPR.</p>
       </Section>
 
       <Section title="9. Contact">
-        <p>For privacy questions, contact us at <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>.</p>
+        <p>For privacy questions, contact us at <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>.</p>
       </Section>
     </div>
   )

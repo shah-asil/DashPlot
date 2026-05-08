@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import posthog from '../lib/posthog'
 
 export default function PdfExportButton({ contentRef, reportTitle, plan }) {
-  const [exporting, setExporting] = useState(false)
+  const [exporting,    setExporting]    = useState(false)
+  const [exportError,  setExportError]  = useState('')
 
   const canExport = plan === 'pro' || plan === 'agency'
 
@@ -75,6 +76,8 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
       pdf.save(`${safeName}.pdf`)
     } catch (err) {
       console.error('[DashPlot] PDF export failed:', err.message)
+      setExportError('Export failed. Please try again.')
+      setTimeout(() => setExportError(''), 5000)
     } finally {
       document.body.classList.remove('pdf-export-mode')
       setExporting(false)
@@ -106,15 +109,20 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
   }
 
   return (
-    <button
-      onClick={handleExport}
-      disabled={exporting}
-      className="text-sm border border-teal-light rounded-pill px-4 py-2 flex items-center gap-2 min-h-[44px] hover:bg-mint transition-colors disabled:opacity-60"
-      style={{ color: '#0F6E56' }}
-    >
-      <DownloadIcon />
-      {exporting ? 'Exporting…' : 'Export PDF'}
-    </button>
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={handleExport}
+        disabled={exporting}
+        className="text-sm border border-teal-light rounded-pill px-4 py-2 flex items-center gap-2 min-h-[44px] hover:bg-mint transition-colors disabled:opacity-60"
+        style={{ color: '#0F6E56' }}
+      >
+        <DownloadIcon />
+        {exporting ? 'Exporting…' : 'Export PDF'}
+      </button>
+      {exportError && (
+        <p className="text-xs px-1" style={{ color: '#E24B4A' }}>{exportError}</p>
+      )}
+    </div>
   )
 }
 

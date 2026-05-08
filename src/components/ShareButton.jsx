@@ -4,9 +4,10 @@ import { supabase } from '../lib/supabase'
 import posthog from '../lib/posthog'
 
 export default function ShareButton({ report, profile, onUpdate }) {
-  const [open, setOpen]       = useState(false)
-  const [copying, setCopying] = useState(false)
-  const [saving, setSaving]   = useState(false)
+  const [open,       setOpen]       = useState(false)
+  const [copying,    setCopying]    = useState(false)
+  const [saving,     setSaving]     = useState(false)
+  const [shareError, setShareError] = useState('')
   const panelRef = useRef(null)
 
   const plan          = profile?.plan ?? 'trial'
@@ -36,18 +37,26 @@ export default function ShareButton({ report, profile, onUpdate }) {
     }
   }, [open, canShare])
 
+  function showShareError(msg) {
+    setShareError(msg)
+    setTimeout(() => setShareError(''), 4000)
+  }
+
   async function toggleSharing() {
     setSaving(true)
+    setShareError('')
     if (isShared) {
       const { error } = await supabase.from('reports').update({ is_shared: false }).eq('id', report.id)
-      if (!error) onUpdate(r => ({ ...r, is_shared: false }))
+      if (error) showShareError('Could not disable sharing. Please try again.')
+      else onUpdate(r => ({ ...r, is_shared: false }))
     } else {
       const token = shareToken ?? crypto.randomUUID()
       const { error } = await supabase
         .from('reports')
         .update({ is_shared: true, share_token: token })
         .eq('id', report.id)
-      if (!error) {
+      if (error) showShareError('Could not enable sharing. Please try again.')
+      else {
         onUpdate(r => ({ ...r, is_shared: true, share_token: token }))
         posthog.capture('report_shared', { report_id: report.id })
       }
@@ -65,7 +74,8 @@ export default function ShareButton({ report, profile, onUpdate }) {
       .from('reports')
       .update({ column_config: newColConfig })
       .eq('id', report.id)
-    if (!error) onUpdate(r => ({ ...r, column_config: newColConfig }))
+    if (error) showShareError('Could not update branding setting. Please try again.')
+    else onUpdate(r => ({ ...r, column_config: newColConfig }))
   }
 
   async function copyLink() {
@@ -109,6 +119,9 @@ export default function ShareButton({ report, profile, onUpdate }) {
             </>
           ) : (
             <>
+              {shareError && (
+                <p className="text-xs" style={{ color: '#E24B4A' }}>{shareError}</p>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-navy">Shareable link</span>
                 <button

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -51,7 +51,8 @@ export default function ReportView() {
   const [loading,  setLoading]  = useState(true)
   const [notFound, setNotFound] = useState(false)
 
-  const pdfRef = useRef(null)
+  const pdfRef       = useRef(null)
+  const saveTimerRef = useRef(null)
 
   const celebrateThird = location.state?.celebrateThird === true
 
@@ -70,17 +71,26 @@ export default function ReportView() {
       })
   }, [id, user])
 
-  async function handleChartConfigChange(index, newConfig) {
+  function handleChartConfigChange(index, newConfig) {
     const current = getChartConfigs(report)
     const updated = current.map((c, i) => i === index ? { ...c, ...newConfig } : c)
     setReport(r => ({ ...r, chart_config: updated }))
-    await supabase.from('reports').update({ chart_config: updated }).eq('id', id)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      const { error } = await supabase.from('reports').update({ chart_config: updated }).eq('id', id)
+      if (error) console.error('[DashPlot] chart config save failed:', error.message)
+    }, 600)
   }
 
   async function handleTitleSave(newTitle) {
     if (!newTitle.trim() || newTitle === report.title) return
+    const prev = report.title
     setReport(r => ({ ...r, title: newTitle }))
-    await supabase.from('reports').update({ title: newTitle.trim() }).eq('id', id)
+    const { error } = await supabase.from('reports').update({ title: newTitle.trim() }).eq('id', id)
+    if (error) {
+      console.error('[DashPlot] title save failed:', error.message)
+      setReport(r => ({ ...r, title: prev }))
+    }
   }
 
   if (loading) return <LoadingView />
@@ -138,7 +148,7 @@ export default function ReportView() {
           </div>
 
           <div className="pdf-hide">
-            <AIInsightCard />
+            <AIInsightCard report={report} plan={profile?.plan} />
           </div>
           <PdfSummaryStats report={report} />
         </div>
