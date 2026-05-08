@@ -7,9 +7,31 @@ const PLAN_MRR = {
 }
 
 async function assertAdmin(supabase, token) {
+  console.error('[DashPlot] admin-data assertAdmin — calling supabase.auth.getUser')
   const { data: { user }, error } = await supabase.auth.getUser(token)
-  if (error || !user) return null
-  const { data: profile } = await supabase.from('users').select('is_admin').eq('id', user.id).single()
+  if (error) {
+    console.error('[DashPlot] admin-data assertAdmin — getUser error:', error.message, '| status:', error.status)
+    return null
+  }
+  if (!user) {
+    console.error('[DashPlot] admin-data assertAdmin — getUser returned no user (token may be expired or invalid)')
+    return null
+  }
+  console.error('[DashPlot] admin-data assertAdmin — user authenticated, id:', user.id)
+
+  console.error('[DashPlot] admin-data assertAdmin — querying users.is_admin for id:', user.id)
+  const { data: profile, error: profileErr } = await supabase
+    .from('users')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  if (profileErr) {
+    console.error('[DashPlot] admin-data assertAdmin — profile query error:', profileErr.message, '| code:', profileErr.code)
+    return null
+  }
+  console.error('[DashPlot] admin-data assertAdmin — profile.is_admin:', profile?.is_admin)
+
   return profile?.is_admin === true ? user : null
 }
 
@@ -20,36 +42,61 @@ function mrrForSub(plan, billingPeriod) {
 }
 
 export default async function handler(req, res) {
+  console.error('[DashPlot] admin-data — request received, method:', req.method, '| section:', req.query.section)
+
   if (req.method !== 'GET') return res.status(405).end()
 
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  console.error('[DashPlot] admin-data — SUPABASE_URL present:', !!supabaseUrl)
+  console.error('[DashPlot] admin-data — SUPABASE_SERVICE_ROLE_KEY present:', !!serviceKey)
+  if (serviceKey) {
+    console.error('[DashPlot] admin-data — SUPABASE_SERVICE_ROLE_KEY first 10 chars:', serviceKey.slice(0, 10))
+  }
+
   if (!supabaseUrl || !serviceKey) {
-    console.error('[DashPlot] admin-data — missing env vars')
+    console.error('[DashPlot] admin-data — FATAL: missing env vars. supabaseUrl:', !!supabaseUrl, '| serviceKey:', !!serviceKey)
     return res.status(500).json({ error: 'Server misconfiguration' })
   }
 
   const authHeader = req.headers.authorization ?? ''
+  console.error('[DashPlot] admin-data — Authorization header present:', authHeader.startsWith('Bearer '), '| length:', authHeader.length)
+
   if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' })
   const token = authHeader.slice(7)
+  console.error('[DashPlot] admin-data — token length:', token.length, '| first 10 chars:', token.slice(0, 10))
 
+  console.error('[DashPlot] admin-data — creating Supabase client with service role key')
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  console.error('[DashPlot] admin-data — calling assertAdmin')
   const admin = await assertAdmin(supabase, token)
-  if (!admin) return res.status(403).json({ error: 'Forbidden' })
+  if (!admin) {
+    console.error('[DashPlot] admin-data — assertAdmin returned null, responding 403')
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  console.error('[DashPlot] admin-data — admin verified, user id:', admin.id)
 
   const section = req.query.section ?? 'overview'
   const search  = (req.query.search ?? '').trim()
+  console.error('[DashPlot] admin-data — section:', section, '| search:', search || '(none)')
 
   try {
     // ── Overview ────────────────────────────────────────────────────────────
     if (section === 'overview') {
+      console.error('[DashPlot] admin-data — querying users and subscriptions for overview')
       const [usersRes, subsRes] = await Promise.all([
         supabase.from('users').select('plan, created_at').is('deleted_at', null),
         supabase.from('subscriptions').select('plan, billing_period, status, cancelled_at'),
       ])
+
+      if (usersRes.error) console.error('[DashPlot] admin-data — users query error:', usersRes.error.message, '| code:', usersRes.error.code)
+      if (subsRes.error)  console.error('[DashPlot] admin-data — subscriptions query error:', subsRes.error.message, '| code:', subsRes.error.code)
+
+      console.error('[DashPlot] admin-data — overview users count:', usersRes.data?.length ?? 'null', '| subs count:', subsRes.data?.length ?? 'null')
 
       const users = usersRes.data ?? []
       const subs  = subsRes.data ?? []
@@ -75,6 +122,7 @@ export default async function handler(req, res) {
         count: users.filter(u => u.plan === plan).length,
       }))
 
+      console.error('[DashPlot] admin-data — overview computed, mrr:', mrr, '| totalUsers:', totalUsers)
       return res.status(200).json({
         mrr: Math.round(mrr * 100) / 100,
         totalUsers,
@@ -87,6 +135,7 @@ export default async function handler(req, res) {
 
     // ── Users ────────────────────────────────────────────────────────────────
     if (section === 'users') {
+      console.error('[DashPlot] admin-data — querying users table, search:', search || '(none)')
       let query = supabase
         .from('users')
         .select('id, email, display_name, plan, billing_period, trial_ends_at, trial_reports_used, created_at, is_admin')
@@ -99,16 +148,24 @@ export default async function handler(req, res) {
       }
 
       const { data, error } = await query
-      if (error) throw error
+      if (error) {
+        console.error('[DashPlot] admin-data — users section query error:', error.message, '| code:', error.code)
+        throw error
+      }
+      console.error('[DashPlot] admin-data — users section returned:', data?.length ?? 0, 'rows')
       return res.status(200).json({ users: data ?? [] })
     }
 
     // ── Revenue ───────────────────────────────────────────────────────────────
     if (section === 'revenue') {
-      const { data: activeSubs } = await supabase
+      console.error('[DashPlot] admin-data — querying subscriptions for revenue section')
+      const { data: activeSubs, error: activeErr } = await supabase
         .from('subscriptions')
         .select('plan, billing_period, status, created_at')
         .eq('status', 'active')
+
+      if (activeErr) console.error('[DashPlot] admin-data — activeSubs query error:', activeErr.message)
+      console.error('[DashPlot] admin-data — activeSubs count:', activeSubs?.length ?? 'null')
 
       const planBreakdown = ['solo', 'pro', 'agency'].map(plan => {
         const planSubs = (activeSubs ?? []).filter(s => s.plan === plan)
@@ -116,10 +173,12 @@ export default async function handler(req, res) {
         return { plan, count: planSubs.length, mrr: Math.round(mrr * 100) / 100 }
       })
 
-      const { data: allSubs } = await supabase
+      const { data: allSubs, error: allSubsErr } = await supabase
         .from('subscriptions')
         .select('plan, billing_period, status, created_at')
         .order('created_at', { ascending: true })
+
+      if (allSubsErr) console.error('[DashPlot] admin-data — allSubs query error:', allSubsErr.message)
 
       const mrrByMonth = {}
       for (const sub of (allSubs ?? [])) {
@@ -137,17 +196,21 @@ export default async function handler(req, res) {
 
     // ── Reports ────────────────────────────────────────────────────────────────
     if (section === 'reports') {
-      const { data: reports } = await supabase
+      console.error('[DashPlot] admin-data — querying reports table')
+      const { data: reports, error: reportsErr } = await supabase
         .from('reports')
         .select('user_id, data_source, created_at')
         .is('deleted_at', null)
+
+      if (reportsErr) console.error('[DashPlot] admin-data — reports query error:', reportsErr.message)
+      console.error('[DashPlot] admin-data — reports count:', reports?.length ?? 'null')
 
       const totalReports = (reports ?? []).length
 
       const userCounts = {}
       const sourceCounts = {}
       for (const r of (reports ?? [])) {
-        userCounts[r.user_id]  = (userCounts[r.user_id]  ?? 0) + 1
+        userCounts[r.user_id]       = (userCounts[r.user_id]       ?? 0) + 1
         sourceCounts[r.data_source] = (sourceCounts[r.data_source] ?? 0) + 1
       }
 
@@ -158,10 +221,11 @@ export default async function handler(req, res) {
 
       let topUsers = []
       if (topUserIds.length > 0) {
-        const { data: users } = await supabase
+        const { data: users, error: usersErr } = await supabase
           .from('users')
           .select('id, email, display_name, plan')
           .in('id', topUserIds)
+        if (usersErr) console.error('[DashPlot] admin-data — topUsers query error:', usersErr.message)
         topUsers = (users ?? [])
           .map(u => ({ ...u, reportCount: userCounts[u.id] ?? 0 }))
           .sort((a, b) => b.reportCount - a.reportCount)
@@ -174,10 +238,14 @@ export default async function handler(req, res) {
 
     // ── Referrals ──────────────────────────────────────────────────────────────
     if (section === 'referrals') {
-      const { data: referrals } = await supabase
+      console.error('[DashPlot] admin-data — querying referrals table')
+      const { data: referrals, error: referralsErr } = await supabase
         .from('referrals')
         .select('id, referrer_id, referred_id, status, converted_at, reward_applied_at, created_at')
         .order('created_at', { ascending: false })
+
+      if (referralsErr) console.error('[DashPlot] admin-data — referrals query error:', referralsErr.message)
+      console.error('[DashPlot] admin-data — referrals count:', referrals?.length ?? 'null')
 
       if (!referrals?.length) return res.status(200).json({ referrals: [] })
 
@@ -186,10 +254,12 @@ export default async function handler(req, res) {
         ...referrals.map(r => r.referred_id),
       ])]
 
-      const { data: users } = await supabase
+      const { data: users, error: usersErr } = await supabase
         .from('users')
         .select('id, email, display_name, plan')
         .in('id', userIds)
+
+      if (usersErr) console.error('[DashPlot] admin-data — referrals users enrichment error:', usersErr.message)
 
       const userMap = Object.fromEntries((users ?? []).map(u => [u.id, u]))
 
@@ -202,9 +272,11 @@ export default async function handler(req, res) {
       return res.status(200).json({ referrals: enriched })
     }
 
+    console.error('[DashPlot] admin-data — unknown section:', section)
     return res.status(400).json({ error: 'Unknown section' })
   } catch (err) {
-    console.error('[DashPlot] admin-data — error:', err.message)
+    console.error('[DashPlot] admin-data — unhandled error in section', section, ':', err.message)
+    console.error('[DashPlot] admin-data — stack:', err.stack)
     return res.status(500).json({ error: 'Internal error' })
   }
 }
