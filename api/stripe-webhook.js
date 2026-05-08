@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object, supabase)
+        await handleCheckoutCompleted(event.data.object, supabase, stripe)
         break
       case 'customer.subscription.updated':
         await handleSubscriptionUpdated(event.data.object, supabase)
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
   return res.status(200).json({ received: true })
 }
 
-async function handleCheckoutCompleted(session, supabase) {
+async function handleCheckoutCompleted(session, supabase, stripe) {
   const userId        = session.metadata?.supabase_user_id
   const plan          = session.metadata?.plan
   const billingPeriod = session.metadata?.billing_period
@@ -92,6 +92,16 @@ async function handleCheckoutCompleted(session, supabase) {
 
   if (userErr) console.error('[DashPlot] stripe-webhook — failed to update user plan:', userErr.message)
 
+  let periodEnd = null
+  if (subscriptionId) {
+    try {
+      const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+      periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString()
+    } catch (e) {
+      console.error('[DashPlot] stripe-webhook — failed to retrieve subscription for period_end:', e.message)
+    }
+  }
+
   const { error: subErr } = await supabase
     .from('subscriptions')
     .upsert({
@@ -101,6 +111,7 @@ async function handleCheckoutCompleted(session, supabase) {
       plan,
       status: 'active',
       billing_period: billingPeriod,
+      current_period_end: periodEnd,
     }, { onConflict: 'stripe_subscription_id' })
 
   if (subErr) console.error('[DashPlot] stripe-webhook — failed to upsert subscription:', subErr.message)

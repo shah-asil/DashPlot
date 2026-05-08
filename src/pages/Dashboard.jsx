@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import TrialStatusBar from '../components/TrialStatusBar'
+import ReferralCard from '../components/ReferralCard'
 import posthog from '../lib/posthog'
 
 const CHART_TYPE_LABELS = {
@@ -14,10 +15,13 @@ export default function Dashboard() {
   const { user, profile, fetchProfile } = useAuth()
   const location  = useLocation()
   const navigate  = useNavigate()
-  const [reports,       setReports]       = useState([])
-  const [loading,       setLoading]       = useState(true)
-  const [deleting,      setDeleting]      = useState(null)
-  const [upgradedPlan,  setUpgradedPlan]  = useState(null)
+  const [reports,          setReports]          = useState([])
+  const [loading,          setLoading]          = useState(true)
+  const [deleting,         setDeleting]         = useState(null)
+  const [upgradedPlan,     setUpgradedPlan]     = useState(null)
+  const [referralDismissed, setReferralDismissed] = useState(
+    () => localStorage.getItem('dashplot_referral_dismissed') === '1'
+  )
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -62,9 +66,16 @@ export default function Dashboard() {
     setDeleting(null)
   }
 
+  function dismissReferral() {
+    localStorage.setItem('dashplot_referral_dismissed', '1')
+    setReferralDismissed(true)
+  }
+
   const displayName  = profile?.display_name || 'there'
   const trialUsed    = profile?.trial_reports_used ?? 0
   const atLimit      = profile?.plan === 'trial' && trialUsed >= 3
+  const showReferralAfterUpgrade = !!upgradedPlan && !referralDismissed
+  const showReferralAfterFirstReport = !loading && reports.length === 1 && !referralDismissed && profile?.plan !== 'trial'
 
   return (
     <div className="flex flex-col flex-1">
@@ -83,6 +94,14 @@ export default function Dashboard() {
             >
               Dismiss
             </button>
+          </div>
+        </div>
+      )}
+
+      {showReferralAfterUpgrade && (
+        <div className="w-full px-4 py-3 border-b" style={{ borderColor: '#9FE1CB' }}>
+          <div className="max-w-6xl mx-auto">
+            <ReferralCard onDismiss={dismissReferral} />
           </div>
         </div>
       )}
@@ -121,16 +140,21 @@ export default function Dashboard() {
         ) : reports.length === 0 ? (
           <EmptyState displayName={displayName} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {reports.map(r => (
-              <ReportCard
-                key={r.id}
-                report={r}
-                deleting={deleting === r.id}
-                onDelete={() => handleDelete(r.id)}
-              />
-            ))}
-          </div>
+          <>
+            {showReferralAfterFirstReport && (
+              <ReferralCard onDismiss={dismissReferral} />
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reports.map(r => (
+                <ReportCard
+                  key={r.id}
+                  report={r}
+                  deleting={deleting === r.id}
+                  onDelete={() => handleDelete(r.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

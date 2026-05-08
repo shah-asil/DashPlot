@@ -22,6 +22,8 @@ const DashboardNew = lazy(() => import('./pages/DashboardNew'))
 const ReportView   = lazy(() => import('./pages/ReportView'))
 const Upgrade      = lazy(() => import('./pages/Upgrade'))
 const ShareView    = lazy(() => import('./pages/ShareView'))
+const Account      = lazy(() => import('./pages/Account'))
+const Billing      = lazy(() => import('./pages/Billing'))
 
 function LazyFallback() {
   return (
@@ -143,13 +145,17 @@ function AppShell() {
 
           <Route path="/account" element={
             <ProtectedRoute>
-              <PlaceholderPage title="Account Settings" phase={10} />
+              <Suspense fallback={<LazyFallback />}>
+                <Account />
+              </Suspense>
             </ProtectedRoute>
           } />
 
           <Route path="/account/billing" element={
             <ProtectedRoute>
-              <PlaceholderPage title="Billing" phase={10} />
+              <Suspense fallback={<LazyFallback />}>
+                <Billing />
+              </Suspense>
             </ProtectedRoute>
           } />
 
@@ -168,19 +174,3 @@ function GuestRoute({ children }) {
   return children
 }
 
-function PlaceholderPage({ title, phase }) {
-  return (
-    <div
-      className="flex-1 flex items-center justify-center px-4 py-24 text-center"
-      style={{ background: 'linear-gradient(135deg, #E1F5EE 0%, #E6F1FB 100%)' }}
-    >
-      <div className="flex flex-col items-center gap-3">
-        <div className="text-xs font-medium text-teal uppercase tracking-widest bg-white border border-teal-light px-3 py-1 rounded-pill">
-          Coming in Phase {phase}
-        </div>
-        <h1 className="text-2xl font-medium text-navy" style={{ letterSpacing: '-0.2px' }}>{title}</h1>
-        <p className="text-sm text-subtle max-w-xs">This section is being built. Check back soon.</p>
-      </div>
-    </div>
-  )
-}
