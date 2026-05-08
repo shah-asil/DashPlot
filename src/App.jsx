@@ -24,6 +24,7 @@ const Upgrade      = lazy(() => import('./pages/Upgrade'))
 const ShareView    = lazy(() => import('./pages/ShareView'))
 const Account      = lazy(() => import('./pages/Account'))
 const Billing      = lazy(() => import('./pages/Billing'))
+const Admin        = lazy(() => import('./pages/Admin'))
 
 function LazyFallback() {
   return (
@@ -55,6 +56,11 @@ export default function App() {
         <Route path="/share/:token" element={
           <Suspense fallback={<ShareFallback />}>
             <SharePageWrapper />
+          </Suspense>
+        } />
+        <Route path="/admin" element={
+          <Suspense fallback={<ShareFallback />}>
+            <Admin />
           </Suspense>
         } />
         <Route path="*" element={<AppShell />} />
