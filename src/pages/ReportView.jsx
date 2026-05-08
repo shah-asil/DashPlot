@@ -125,7 +125,7 @@ export default function ReportView() {
             large
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="pdf-small-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
             {chartConfigs.slice(1).map((cfg, i) => (
               <ChartCard
                 key={i}
@@ -155,7 +155,7 @@ function ChartCard({ report, config, onChange, large = false }) {
 
   return (
     <div className="bg-white border border-mint rounded-card shadow-card p-4 sm:p-5 flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="pdf-hide flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-subtle">x:</span>
           <select

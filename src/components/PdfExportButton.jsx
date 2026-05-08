@@ -9,13 +9,16 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
   async function handleExport() {
     if (!contentRef?.current) return
     setExporting(true)
+    document.body.classList.add('pdf-export-mode')
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
 
-      await new Promise(r => setTimeout(r, 120))
+      // Wait for CSS layout changes (grid collapse, control hiding) and
+      // Recharts ResizeObserver to re-render charts at new widths.
+      await new Promise(r => setTimeout(r, 300))
 
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
@@ -25,13 +28,13 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
       })
 
       const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const margin  = 10
-      const pageW   = pdf.internal.pageSize.getWidth()
-      const pageH   = pdf.internal.pageSize.getHeight()
-      const imgW    = pageW - margin * 2
-      const imgH    = (canvas.height / canvas.width) * imgW
-      const usable  = pageH - margin * 2
+      const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const margin = 12
+      const pageW  = pdf.internal.pageSize.getWidth()
+      const pageH  = pdf.internal.pageSize.getHeight()
+      const imgW   = pageW - margin * 2
+      const imgH   = (canvas.height / canvas.width) * imgW
+      const usable = pageH - margin * 2
 
       let page = 0
       while (page * usable < imgH) {
@@ -44,8 +47,10 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
       pdf.save(`${safeName}.pdf`)
     } catch (err) {
       console.error('[DashPlot] PDF export failed:', err.message)
+    } finally {
+      document.body.classList.remove('pdf-export-mode')
+      setExporting(false)
     }
-    setExporting(false)
   }
 
   if (!canExport) {

@@ -20,3 +20,14 @@
     font-weight: 500;
   }
 }
+
+/* ── PDF export capture mode ──────────────────────────────────────────────── */
+.pdf-export-mode .pdf-hide {
+  display: none !important;
+}
+
+/* Switch 3-column small-chart grid to 1-column so charts are full-width */
+.pdf-export-mode .pdf-small-grid {
+  grid-template-columns: 1fr !important;
+  gap: 20px !important;
+}
