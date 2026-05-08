@@ -32,6 +32,13 @@
   gap: 20px !important;
 }
 
+/* Prevent metric card labels from being clipped in captured image */
+.pdf-export-mode .pdf-metric-grid .truncate {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
 /* Kill all CSS animations/transitions during capture */
 .pdf-export-mode * {
   animation-duration: 0.001ms !important;

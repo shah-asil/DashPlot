@@ -137,7 +137,9 @@ export default function ReportView() {
             ))}
           </div>
 
-          <AIInsightCard />
+          <div className="pdf-hide">
+            <AIInsightCard />
+          </div>
           <PdfSummaryStats report={report} />
         </div>
       </div>

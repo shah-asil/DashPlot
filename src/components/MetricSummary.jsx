@@ -4,9 +4,9 @@ export default function MetricSummary({ rows, colConfig }) {
   if (!metrics.length) return null
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="pdf-metric-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {metrics.map(m => (
-        <div key={m.label} className="bg-white border border-mint rounded-card p-4 shadow-card">
+        <div key={m.label} className="bg-white border border-mint rounded-card p-4 shadow-card overflow-hidden">
           <p className="text-xs text-subtle truncate">{m.label}</p>
           <p className="text-lg font-medium text-navy mt-1 truncate" style={{ letterSpacing: '-0.2px' }}>{m.value}</p>
           {m.sub && <p className="text-xs text-teal mt-0.5">{m.sub}</p>}

@@ -20,27 +20,50 @@ export default function PdfExportButton({ contentRef, reportTitle, plan }) {
       // Recharts ResizeObserver to re-render charts at new widths.
       await new Promise(r => setTimeout(r, 2000))
 
+      const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const margin = 12
+      const pageW  = pdf.internal.pageSize.getWidth()
+      const pageH  = pdf.internal.pageSize.getHeight()
+      const usable = pageH - margin * 2
+
+      // Hide stats during main capture so it doesn't appear mid-page
+      const statsEl = contentRef.current.querySelector('.pdf-stats-show')
+      if (statsEl) statsEl.style.setProperty('display', 'none', 'important')
+
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
       })
 
-      const imgData = canvas.toDataURL('image/png')
-      const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const margin = 12
-      const pageW  = pdf.internal.pageSize.getWidth()
-      const pageH  = pdf.internal.pageSize.getHeight()
-      const imgW   = pageW - margin * 2
-      const imgH   = (canvas.height / canvas.width) * imgW
-      const usable = pageH - margin * 2
+      const imgW = pageW - margin * 2
+      const imgH = (canvas.height / canvas.width) * imgW
 
       let page = 0
       while (page * usable < imgH) {
         if (page > 0) pdf.addPage()
-        pdf.addImage(imgData, 'PNG', margin, margin - page * usable, imgW, imgH)
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin - page * usable, imgW, imgH)
         page++
+      }
+
+      // Restore stats and capture on its own clean page
+      if (statsEl) {
+        statsEl.style.removeProperty('display')
+        const statsCanvas = await html2canvas(statsEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+        })
+        const sW = pageW - margin * 2
+        const sH = (statsCanvas.height / statsCanvas.width) * sW
+        pdf.addPage()
+        pdf.addImage(statsCanvas.toDataURL('image/png'), 'PNG', margin, margin, sW, sH)
       }
 
       const safeName = (reportTitle ?? 'report').replace(/[^a-z0-9\s-]/gi, '').trim() || 'report'
