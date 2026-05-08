@@ -92,7 +92,7 @@ export default function Guide() {
 
       <div className="mt-12 p-6 bg-mint border border-teal-light rounded-card">
         <p className="text-sm text-ai-text">
-          Still getting errors after following this guide? Email <a href="mailto:hello@dashplot.com" className="underline">hello@dashplot.com</a> and attach your file — we'll help you fix it within 24 hours.
+          Still getting errors after following this guide? Email <a href="mailto:shakhunasil@hotmail.com" className="underline">shakhunasil@hotmail.com</a> and attach your file — we'll help you fix it within 24 hours.
         </p>
       </div>
 

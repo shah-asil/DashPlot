@@ -40,7 +40,7 @@ const FAQS = [
   },
   {
     q: 'Do you offer team or agency plans?',
-    a: 'Yes. The Agency plan ($79/month) includes 5 seats, unlimited workspaces, and unlimited history retention. Contact hello@dashplot.com for custom enterprise pricing.',
+    a: 'Yes. The Agency plan ($79/month) includes 5 seats, unlimited workspaces, and unlimited history retention. Contact shakhunasil@hotmail.com for custom enterprise pricing.',
   },
   {
     q: 'Is there a referral programme?',
@@ -56,7 +56,7 @@ export default function FAQ() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-medium text-navy mb-2" style={{ letterSpacing: '-0.2px' }}>Frequently asked questions</h1>
-      <p className="text-sm text-subtle mb-10">Can't find what you need? Email <a href="mailto:hello@dashplot.com" className="text-teal hover:underline">hello@dashplot.com</a>.</p>
+      <p className="text-sm text-subtle mb-10">Can't find what you need? Email <a href="mailto:shakhunasil@hotmail.com" className="text-teal hover:underline">shakhunasil@hotmail.com</a>.</p>
 
       <div className="flex flex-col gap-2">
         {FAQS.map((item, i) => (
